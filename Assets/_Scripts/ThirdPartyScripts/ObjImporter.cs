@@ -45,7 +45,7 @@ namespace ThirdPartyScripts
                 if (v.y >= 1)
                     newUVs[i] = newMesh.uv[(int)v.y - 1];
 
-                if (v.z >= 1)
+                if (v.z >= 1 && (int)v.z - 1 < newMesh.normals.Length)
                     newNormals[i] = newMesh.normals[(int)v.z - 1];
                 i++;
             }
@@ -194,6 +194,11 @@ namespace ThirdPartyScripts
                                 vt2++;
                                 break;
                             case "vn":
+                                if (brokenString[1].Contains("-1.#IND00") ||
+                                    brokenString[2].Contains("-1.#IND00") ||
+                                    brokenString[3].Contains("-1.#IND00"))
+                                    break;
+
                                 mesh.normals[vn] = new Vector3(System.Convert.ToSingle(brokenString[1]), System.Convert.ToSingle(brokenString[2]),
                                     System.Convert.ToSingle(brokenString[3]));
                                 vn++;
