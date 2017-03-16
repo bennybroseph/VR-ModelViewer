@@ -10,15 +10,49 @@ using ThirdPartyScripts;
 
 public class ResourceManager : MonoBehaviour
 {
-    [SerializeField, Range(0f, 10f)]
+    [SerializeField]
+    private GameObject m_GridLayoutAnchor;
+    [SerializeField]
+    private GridLayoutGroup m_GridLayoutGroupPrefab;
+
+    [Space, SerializeField, Range(0f, 10f)]
     private float m_CheckDirectoryTime = 1f;
+
+    [Space, SerializeField, Range(0.1f, 10f)]
+    private float m_MeshVolume = 0.5f;
 
     [Header("Debugging"), SerializeField]
     private Text m_DebugText;
 
-    private List<ModelProxy> m_ModelProxies = new List<ModelProxy>();
+    private GridLayoutGroup m_GridLayoutGroup;
+
+    private List<MeshProxy> m_MeshProxies = new List<MeshProxy>();
+
+    private float m_PrevModelVolume;
+
+    public float MeshVolume { get { return m_MeshVolume; } set { m_MeshVolume = value; OnValidate(); } }
+
+    private void OnValidate()
+    {
+        if (m_PrevModelVolume != m_MeshVolume)
+        {
+            foreach (var meshProxy in m_MeshProxies)
+                meshProxy.meshVolume = m_MeshVolume;
+
+            m_PrevModelVolume = m_MeshVolume;
+        }
+    }
 
     private void Awake()
+    {
+        if (m_GridLayoutGroupPrefab == null)
+            return;
+
+        m_GridLayoutGroup = Instantiate(m_GridLayoutGroupPrefab);
+        m_GridLayoutGroup.transform.SetParent(m_GridLayoutAnchor.transform, false);
+    }
+
+    private void Start()
     {
         CheckDirectory();
 
@@ -43,7 +77,7 @@ public class ResourceManager : MonoBehaviour
 
         var newFiles =
             files.Where(
-                file => !m_ModelProxies.Select(proxy => proxy.modelPath).Contains(file) && (
+                file => !m_MeshProxies.Select(proxy => proxy.meshPath).Contains(file) && (
                 file.EndsWith(".obj") || file.EndsWith(".fbx"))).ToList();
 
         // A new Model was added to the directory since last checked
@@ -51,21 +85,19 @@ public class ResourceManager : MonoBehaviour
         {
             foreach (var newFile in newFiles)
             {
-                var newModelProxy = new GameObject().AddComponent<ModelProxy>();
-                newModelProxy.modelPath = newFile;
-
-                m_ModelProxies.Add(newModelProxy);
+                var newGameObject = CreateGrabbableMeshProxy(newFile);
+                m_MeshProxies.Add(newGameObject.GetComponent<MeshProxy>());
             }
         }
 
-        var removedFiles = m_ModelProxies.Where(proxy => !files.Contains(proxy.modelPath)).ToList();
+        var removedFiles = m_MeshProxies.Where(proxy => !files.Contains(proxy.meshPath)).ToList();
 
         // A Model was removed from the directory since last checked
         if (removedFiles.Any())
         {
             foreach (var removedFile in removedFiles)
             {
-                m_ModelProxies.Remove(removedFile);
+                m_MeshProxies.Remove(removedFile);
                 Destroy(removedFile.gameObject);
             }
         }
@@ -77,9 +109,26 @@ public class ResourceManager : MonoBehaviour
         if (newFiles.Any() || removedFiles.Any())
         {
             m_DebugText.text = string.Empty;
-            foreach (var file in m_ModelProxies.Select(proxy => proxy.modelPath))
+            foreach (var file in m_MeshProxies.Select(proxy => proxy.meshPath))
                 m_DebugText.text += '\n' + file;
         }
+    }
+
+    public GameObject CreateGrabbableMeshProxy(string newMeshPath)
+    {
+        var newGameObject = new GameObject();
+        newGameObject.AddComponent<RectTransform>();
+
+        var newGrabbableMeshProxy = newGameObject.AddComponent<GrabbableMeshProxy>();
+        var newMeshProxy = newGameObject.GetComponent<MeshProxy>();
+
+        newGameObject.transform.SetParent(m_GridLayoutGroup.transform, false);
+        newGameObject.transform.Rotate(new Vector3(90f, 0f, 0f));
+
+        newMeshProxy.meshPath = newMeshPath;
+        newMeshProxy.meshVolume = m_MeshVolume;
+
+        return newGameObject;
     }
 
     private IEnumerator CheckDirectoryEnumerator()
