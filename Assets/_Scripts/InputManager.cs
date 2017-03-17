@@ -8,6 +8,8 @@ public class InputManager : MonoBehaviour
     [SerializeField]
     private SteamVR_TrackedObject m_LeftController;
 
+    private IGrabbable m_HeldObject;
+
     private void Update()
     {
         if (!m_RightController.isValid)
@@ -16,16 +18,27 @@ public class InputManager : MonoBehaviour
         var controllerData = SteamVR_Controller.Input((int)m_RightController.index);
         if (controllerData.GetHairTriggerDown())
         {
-            var rayCastHits =
-                Physics.RaycastAll(
-                    new Ray(m_RightController.transform.position, m_RightController.transform.forward));
-
-            foreach (var raycastHit in rayCastHits)
+            if (m_HeldObject == null)
             {
-                var grabbable = raycastHit.transform.gameObject.GetComponent<IGrabbable>();
-                if (grabbable != null)
-                    grabbable.Grab(m_RightController.transform);
+                var rayCastHits =
+                    Physics.RaycastAll(
+                        new Ray(m_RightController.transform.position, m_RightController.transform.forward));
+
+                var grabbableObjects =
+                    rayCastHits.
+                        Select(raycastHit => raycastHit.transform.gameObject.GetComponent<IGrabbable>()).ToList();
+
+                if (grabbableObjects.Any())
+                {
+                    var grabbableObject = grabbableObjects.First(grabbable => grabbable != null);
+                    grabbableObject.Grab(m_RightController.transform);
+                }
             }
+        }
+        else if (m_HeldObject != null)
+        {
+            m_HeldObject.Release(controllerData.velocity);
+            m_HeldObject = null;
         }
     }
 

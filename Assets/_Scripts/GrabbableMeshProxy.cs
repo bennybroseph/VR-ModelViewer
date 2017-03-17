@@ -47,11 +47,12 @@ public class GrabbableMeshProxy : MonoBehaviour, IGrabbable
         currentlyHeld = false;
     }
 
-    public void Release()
+    public void Release(Vector3 newVelocity)
     {
         transform.SetParent(null, true);
 
         m_Rigidbody.isKinematic = false;
+        m_Rigidbody.velocity = newVelocity;
 
         currentlyHeld = false;
     }
@@ -77,5 +78,7 @@ public class GrabbableMeshProxy : MonoBehaviour, IGrabbable
 
         if (m_BoxCollider != null)
             m_BoxCollider.enabled = !m_MeshProxy.proxyMode;
+
+        //m_Rigidbody.WakeUp();
     }
 }

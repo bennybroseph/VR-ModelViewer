@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-
+using Library;
 using UnityEngine;
 using UnityEngine.UI;
 
 using ThirdPartyScripts;
 
-public class ResourceManager : MonoBehaviour
+public class ResourceManager : MonoSingleton<ResourceManager>
 {
     [SerializeField]
     private GameObject m_GridLayoutAnchor;
@@ -43,8 +43,10 @@ public class ResourceManager : MonoBehaviour
         }
     }
 
-    private void Awake()
+    protected override void Awake()
     {
+        base.Awake();
+
         if (m_GridLayoutGroupPrefab == null)
             return;
 
@@ -111,6 +113,8 @@ public class ResourceManager : MonoBehaviour
             m_DebugText.text = string.Empty;
             foreach (var file in m_MeshProxies.Select(proxy => proxy.meshPath))
                 m_DebugText.text += '\n' + file;
+
+            m_DebugText.text = m_DebugText.text.TrimStart('\n');
         }
     }
 
