@@ -43,18 +43,20 @@ public class InputManager : MonoBehaviour
             rayCastHits.
                 Where(raycastHit => raycastHit.transform.gameObject.GetComponent<IGrabbable>() != null).
                 Select(rayCastHit => rayCastHit.transform.gameObject).ToList();
-        if (!grabbableObjects.Any())
-            return;
 
-        var grabbableObject = grabbableObjects.First();
+        if (grabbableObjects.Any())
+        {
+            var grabbableObject = grabbableObjects.First();
 
-        m_Text.text = grabbableObject.name;
+            m_Text.text = grabbableObject.name;
+        }
 
         var controllerData = SteamVR_Controller.Input((int)m_RightController.index);
         if (controllerData.GetHairTriggerDown())
         {
-            if (m_HeldObject == null)
+            if (m_HeldObject == null && grabbableObjects.Any())
             {
+                var grabbableObject = grabbableObjects.First();
                 var grabbableComponent = grabbableObject.GetComponent<IGrabbable>();
                 grabbableComponent.Grab(m_RightController.transform);
                 m_HeldObject = grabbableComponent;
