@@ -28,19 +28,32 @@ public class GrabbableMeshProxy : MonoBehaviour, IGrabbable
 
     private void OnTriggerEnter(Collider other)
     {
-        if (currentlyHeld || transform.parent.GetComponent<GridLayoutGroup>())
+        if (currentlyHeld || transform.parent != null && transform.parent.GetComponent<GridLayoutGroup>())
             return;
 
-        if (other.CompareTag("To Proxy"))
+        if (other.gameObject.GetComponent<TriggerVolume>() == null)
+            return;
+
+        var triggerVolume = other.gameObject.GetComponent<TriggerVolume>();
+
+        if (triggerVolume.triggerName == "To Proxy")
             m_MeshProxy.proxyMode = true;
-        if (other.CompareTag("To Mesh"))
+        if (triggerVolume.triggerName == "To Mesh")
             m_MeshProxy.proxyMode = false;
+
+        if (triggerVolume.triggerName == "Grid")
+        {
+            transform.SetParent(triggerVolume.transform, false);
+            transform.SetAsLastSibling();
+
+            m_Rigidbody.isKinematic = true;
+        }
     }
 
     public void Grab(Transform newParent)
     {
         transform.SetParent(newParent, true);
-        transform.localPosition = Vector3.zero;
+        transform.localPosition = new Vector3(0f, -0.04f, 0.03f);
 
         m_Rigidbody.isKinematic = true;
 
@@ -78,7 +91,5 @@ public class GrabbableMeshProxy : MonoBehaviour, IGrabbable
 
         if (m_BoxCollider != null)
             m_BoxCollider.enabled = !m_MeshProxy.proxyMode;
-
-        //m_Rigidbody.WakeUp();
     }
 }

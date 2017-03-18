@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class InputManager : MonoBehaviour
 {
@@ -8,38 +9,66 @@ public class InputManager : MonoBehaviour
     [SerializeField]
     private SteamVR_TrackedObject m_LeftController;
 
+    [SerializeField]
+    private Canvas m_ControllerCanvasPrefab;
+
+    private Canvas m_ControllerCanvas;
+    private Text m_Text;
+
     private IGrabbable m_HeldObject;
+
+    private bool m_TriggerWasHeld;
+
+    private void Awake()
+    {
+        m_ControllerCanvas = Instantiate(m_ControllerCanvasPrefab);
+        m_ControllerCanvas.worldCamera = Camera.main;
+
+        m_Text = m_ControllerCanvas.GetComponentInChildren<Text>();
+        m_Text.text = string.Empty;
+
+        m_ControllerCanvas.transform.SetParent(m_RightController.transform);
+    }
 
     private void Update()
     {
         if (!m_RightController.isValid)
             return;
 
+        var rayCastHits =
+                    Physics.RaycastAll(
+                        new Ray(m_RightController.transform.position, m_RightController.transform.forward));
+
+        var grabbableObjects =
+            rayCastHits.
+                Where(raycastHit => raycastHit.transform.gameObject.GetComponent<IGrabbable>() != null).
+                Select(rayCastHit => rayCastHit.transform.gameObject).ToList();
+        if (!grabbableObjects.Any())
+            return;
+
+        var grabbableObject = grabbableObjects.First();
+
+        m_Text.text = grabbableObject.name;
+
         var controllerData = SteamVR_Controller.Input((int)m_RightController.index);
         if (controllerData.GetHairTriggerDown())
         {
             if (m_HeldObject == null)
             {
-                var rayCastHits =
-                    Physics.RaycastAll(
-                        new Ray(m_RightController.transform.position, m_RightController.transform.forward));
-
-                var grabbableObjects =
-                    rayCastHits.
-                        Select(raycastHit => raycastHit.transform.gameObject.GetComponent<IGrabbable>()).ToList();
-
-                if (grabbableObjects.Any())
-                {
-                    var grabbableObject = grabbableObjects.First(grabbable => grabbable != null);
-                    grabbableObject.Grab(m_RightController.transform);
-                }
+                var grabbableComponent = grabbableObject.GetComponent<IGrabbable>();
+                grabbableComponent.Grab(m_RightController.transform);
+                m_HeldObject = grabbableComponent;
             }
+
+            m_TriggerWasHeld = true;
         }
-        else if (m_HeldObject != null)
+        else if (!m_TriggerWasHeld && m_HeldObject != null)
         {
             m_HeldObject.Release(controllerData.velocity);
             m_HeldObject = null;
         }
+        else if (controllerData.GetHairTrigger() == false)
+            m_TriggerWasHeld = false;
     }
 
     private void OnRenderObject()

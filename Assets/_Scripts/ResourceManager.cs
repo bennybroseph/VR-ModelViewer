@@ -13,7 +13,7 @@ public class ResourceManager : MonoSingleton<ResourceManager>
     [SerializeField]
     private GameObject m_GridLayoutAnchor;
     [SerializeField]
-    private GridLayoutGroup m_GridLayoutGroupPrefab;
+    private GridLayout m_GridLayoutPrefab;
 
     [Space, SerializeField, Range(0f, 10f)]
     private float m_CheckDirectoryTime = 1f;
@@ -24,7 +24,7 @@ public class ResourceManager : MonoSingleton<ResourceManager>
     [Header("Debugging"), SerializeField]
     private Text m_DebugText;
 
-    private GridLayoutGroup m_GridLayoutGroup;
+    private GridLayout m_GridLayout;
 
     private List<MeshProxy> m_MeshProxies = new List<MeshProxy>();
 
@@ -47,11 +47,11 @@ public class ResourceManager : MonoSingleton<ResourceManager>
     {
         base.Awake();
 
-        if (m_GridLayoutGroupPrefab == null)
+        if (m_GridLayoutPrefab == null)
             return;
 
-        m_GridLayoutGroup = Instantiate(m_GridLayoutGroupPrefab);
-        m_GridLayoutGroup.transform.SetParent(m_GridLayoutAnchor.transform, false);
+        m_GridLayout = Instantiate(m_GridLayoutPrefab);
+        m_GridLayout.transform.SetParent(m_GridLayoutAnchor.transform, false);
     }
 
     private void Start()
@@ -121,13 +121,11 @@ public class ResourceManager : MonoSingleton<ResourceManager>
     public GameObject CreateGrabbableMeshProxy(string newMeshPath)
     {
         var newGameObject = new GameObject();
-        newGameObject.AddComponent<RectTransform>();
 
         var newGrabbableMeshProxy = newGameObject.AddComponent<GrabbableMeshProxy>();
         var newMeshProxy = newGameObject.GetComponent<MeshProxy>();
 
-        newGameObject.transform.SetParent(m_GridLayoutGroup.transform, false);
-        newGameObject.transform.Rotate(new Vector3(90f, 0f, 0f));
+        newGameObject.transform.SetParent(m_GridLayout.transform, false);
 
         newMeshProxy.meshPath = newMeshPath;
         newMeshProxy.meshVolume = m_MeshVolume;
