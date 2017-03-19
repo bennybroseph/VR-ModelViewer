@@ -18,7 +18,7 @@ public class ResourceManager : MonoSingleton<ResourceManager>
     [Space, SerializeField, Range(0f, 10f)]
     private float m_CheckDirectoryTime = 1f;
 
-    [Space, SerializeField, Range(0.1f, 10f)]
+    [Space, SerializeField, Range(0.075f, 0.2f)]
     private float m_MeshVolume = 0.5f;
 
     [Header("Debugging"), SerializeField]
