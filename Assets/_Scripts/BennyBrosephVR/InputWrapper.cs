@@ -59,8 +59,9 @@
                 // Populate the 'buttonStates' dictionary with every possible 'EVRButtonId'
                 // set to 'ButtonState.None' so that there is no issue with getting an
                 // exception when searching for a button's state
-                foreach (var value in Enum.GetValues(typeof(EVRButtonId)))
-                    buttonStates.Add((EVRButtonId)value, ButtonState.None);
+                foreach (EVRButtonId value in Enum.GetValues(typeof(EVRButtonId)))
+                    if (!buttonStates.ContainsKey(value))
+                        buttonStates.Add(value, ButtonState.None);
             }
         }
 
@@ -74,14 +75,19 @@
         [SerializeField]
         private DevicePreference m_DevicePreference;
 
-        [Space, SerializeField, Tooltip("Triggered whenever a button's state changes")]
+        /// <summary> Triggered whenever the trigger's state changes </summary>
+        [Space, SerializeField]
         private SteamVR_ControllerButtonEvent m_OnTrigger = new SteamVR_ControllerButtonEvent();
         [SerializeField]
         private SteamVR_ControllerButtonEvent m_OnRightTrigger = new SteamVR_ControllerButtonEvent();
         [SerializeField]
         private SteamVR_ControllerButtonEvent m_OnLeftTrigger = new SteamVR_ControllerButtonEvent();
 
-        [SerializeField, Tooltip("Triggered whenever a touchpad's axis value changes")]
+        /// <summary> Triggered whenever the touchpad's button state changes </summary>
+        [SerializeField]
+        private SteamVR_ControllerButtonEvent m_OnTouchpad = new SteamVR_ControllerButtonEvent();
+        /// <summary> Triggered whenever a touchpad's axis value changes </summary>
+        [SerializeField]
         private SteamVR_ControllerAxisEvent m_OnTouchpadDelta = new SteamVR_ControllerAxisEvent();
 
         private Dictionary<int, ControllerState> m_ControllerStates =
@@ -94,6 +100,7 @@
         }
 
         public SteamVR_ControllerButtonEvent onTrigger { get { return m_OnTrigger; } }
+        public SteamVR_ControllerButtonEvent onTouchpad { get { return m_OnTouchpad; } }
         public SteamVR_ControllerAxisEvent onTouchpadDelta { get { return m_OnTouchpadDelta; } }
 
         protected override void Awake() { base.Awake(); }
@@ -117,32 +124,35 @@
             var deviceIndex = (int)device.index;
             var controllerState = m_ControllerStates[deviceIndex];
 
-            var triggerIndex = EVRButtonId.k_EButton_SteamVR_Trigger;
-            if (device.GetPressDown(triggerIndex))
+            foreach (var value in controllerState.buttonStates.Keys.ToList())
             {
-                controllerState.buttonStates[triggerIndex] = ButtonState.Press;
-                m_OnTrigger.Invoke(device, ButtonState.Press);
+                if (device.GetPressDown(value))
+                    controllerState.buttonStates[value] = ButtonState.Press;
+                else if (device.GetPress(value))
+                    controllerState.buttonStates[value] = ButtonState.Hold;
+                else if (device.GetPressUp(value))
+                    controllerState.buttonStates[value] = ButtonState.Release;
+                else
+                    controllerState.buttonStates[value] = ButtonState.None;
+
+                var currentButtonState = controllerState.buttonStates[value];
+                if (value == EVRButtonId.k_EButton_SteamVR_Trigger)
+                    m_OnTrigger.Invoke(device, currentButtonState);
+
+                if (value == EVRButtonId.k_EButton_SteamVR_Touchpad)
+                    m_OnTouchpad.Invoke(device, currentButtonState);
+
             }
-            else if (device.GetPress(triggerIndex))
-            {
-                controllerState.buttonStates[triggerIndex] = ButtonState.Hold;
-                m_OnTrigger.Invoke(device, ButtonState.Hold);
-            }
-            else if (device.GetPressUp(triggerIndex))
-            {
-                controllerState.buttonStates[triggerIndex] = ButtonState.Release;
-                m_OnTrigger.Invoke(device, ButtonState.Release);
-            }
-            else
-                controllerState.buttonStates[triggerIndex] = ButtonState.None;
 
             var touchpadPosition = device.GetAxis();
             if (touchpadPosition != controllerState.prevTouchpadPosition)
             {
-                m_OnTouchpadDelta.Invoke(
-                    device,
-                    touchpadPosition,
-                    controllerState.prevTouchpadPosition - touchpadPosition);
+                if (touchpadPosition != Vector2.zero &&
+                    controllerState.prevTouchpadPosition != Vector2.zero)
+                    m_OnTouchpadDelta.Invoke(
+                        device,
+                        touchpadPosition,
+                        controllerState.prevTouchpadPosition - touchpadPosition);
 
                 controllerState.prevTouchpadPosition = touchpadPosition;
             }
@@ -211,25 +221,25 @@
         [CanBeNull]
         public SteamVR_TrackedObject GetRightTrackedObject()
         {
-            return FindObjectsOfType<SteamVR_TrackedObject>().First(
+            return FindObjectsOfType<SteamVR_TrackedObject>().FirstOrDefault(
                 trackedObject => (int)trackedObject.index == GetRightDeviceIndex());
         }
         [CanBeNull]
         public SteamVR_TrackedObject GetLeftTrackedObject()
         {
-            return FindObjectsOfType<SteamVR_TrackedObject>().First(
+            return FindObjectsOfType<SteamVR_TrackedObject>().FirstOrDefault(
                 trackedObject => (int)trackedObject.index == GetLeftDeviceIndex());
         }
         [CanBeNull]
         public SteamVR_TrackedObject GetPrimaryTrackedObject()
         {
-            return FindObjectsOfType<SteamVR_TrackedObject>().First(
+            return FindObjectsOfType<SteamVR_TrackedObject>().FirstOrDefault(
                 trackedObject => (int)trackedObject.index == GetPrimaryDeviceIndex());
         }
         [CanBeNull]
         public SteamVR_TrackedObject GetSecondaryTrackedObject()
         {
-            return FindObjectsOfType<SteamVR_TrackedObject>().First(
+            return FindObjectsOfType<SteamVR_TrackedObject>().FirstOrDefault(
                 trackedObject => (int)trackedObject.index == GetSecondaryDeviceIndex());
         }
 

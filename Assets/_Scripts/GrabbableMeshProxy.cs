@@ -53,19 +53,20 @@ public class GrabbableMeshProxy : MonoBehaviour, IGrabbable
     public void Grab(Transform newParent)
     {
         transform.SetParent(newParent, true);
-        transform.localPosition = new Vector3(0f, -0.04f, 0.03f);
+        transform.localPosition = new Vector3(0f, -0.01f, 0.05f);
 
         m_Rigidbody.isKinematic = true;
 
         currentlyHeld = false;
     }
 
-    public void Release(Vector3 newVelocity)
+    public void Release(Vector3 newVelocity, Vector3 newAngularVelocity)
     {
         transform.SetParent(null, true);
 
         m_Rigidbody.isKinematic = false;
         m_Rigidbody.velocity = newVelocity;
+        m_Rigidbody.angularVelocity = newAngularVelocity;
 
         currentlyHeld = false;
     }
@@ -73,6 +74,11 @@ public class GrabbableMeshProxy : MonoBehaviour, IGrabbable
     public void Rotate(Vector3 rotation)
     {
         transform.Rotate(rotation);
+    }
+
+    public void Pan(Vector3 translation)
+    {
+        transform.localPosition += translation;
     }
 
     private void OnMeshLoaded()
@@ -92,4 +98,6 @@ public class GrabbableMeshProxy : MonoBehaviour, IGrabbable
         if (m_BoxCollider != null)
             m_BoxCollider.enabled = !m_MeshProxy.proxyMode;
     }
+
+
 }

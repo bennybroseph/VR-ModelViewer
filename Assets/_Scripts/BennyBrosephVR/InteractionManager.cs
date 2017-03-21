@@ -11,14 +11,27 @@ namespace BennyBrosephVR
 
     public class InteractionManager : MonoSingleton<InteractionManager>
     {
+        private enum TouchpadMode
+        {
+            Rotate,
+            Pan,
+        }
+
         [SerializeField]
         private Canvas m_ControllerCanvasPrefab;
+
+        [SerializeField]
+        private float m_RotationCoefficient;
+        [SerializeField]
+        private float m_TranslationCoefficient;
 
         private Canvas m_ControllerCanvas;
         private Text m_Text;
 
         private GameObject m_HighlightedObject;
         private GameObject m_HeldObject;
+
+        private TouchpadMode m_TouchpadMode;
 
         private bool m_TriggerIsHeld;
         private Vector2 m_PrevAxis;
@@ -36,9 +49,11 @@ namespace BennyBrosephVR
 
         protected void Start()
         {
-            m_ControllerCanvas.transform.SetParent(InputWrapper.self.GetRightTrackedObject().transform);
+            if (InputWrapper.self.GetRightTrackedObject() != null)
+                m_ControllerCanvas.transform.SetParent(InputWrapper.self.GetRightTrackedObject().transform);
 
             InputWrapper.self.onTrigger.AddListener(OnTrigger);
+            InputWrapper.self.onTouchpad.AddListener(OnTouchpad);
             InputWrapper.self.onTouchpadDelta.AddListener(OnTouchpadDelta);
         }
 
@@ -97,21 +112,58 @@ namespace BennyBrosephVR
                     if (m_HeldObject == null && m_HighlightedObject != null)
                     {
                         var highlightedGrabbable = m_HighlightedObject.GetComponent<IGrabbable>();
-                        highlightedGrabbable.Grab(primaryController.transform);
+                        highlightedGrabbable.Grab(
+                            primaryController.transform.
+                                FindChild("Model").
+                                FindChild("tip").GetChild(0));
 
                         m_HeldObject = m_HighlightedObject;
+                    }
+                    else if (m_HeldObject != null)
+                    {
+                        var heldGrabbable = m_HeldObject.GetComponent<IGrabbable>();
+                        heldGrabbable.Release(device.velocity, device.angularVelocity);
+
+                        m_HeldObject = null;
                     }
                     break;
                 case ButtonState.Hold:
                     break;
                 case ButtonState.Release:
-                    if (m_HeldObject != null)
-                    {
-                        var heldGrabbable = m_HeldObject.GetComponent<IGrabbable>();
-                        heldGrabbable.Release(device.velocity);
+                    break;
 
-                        m_HeldObject = null;
+                default:
+                    throw new ArgumentOutOfRangeException("buttonState", buttonState, null);
+            }
+        }
+
+        private void OnTouchpad(SteamVR_Controller.Device device, ButtonState buttonState)
+        {
+            if (device.index != InputWrapper.self.GetPrimaryDeviceIndex())
+                return;
+
+            switch (buttonState)
+            {
+                case ButtonState.None:
+                    break;
+                case ButtonState.Press:
+                    switch (m_TouchpadMode)
+                    {
+                        case TouchpadMode.Rotate:
+                            m_TouchpadMode = TouchpadMode.Pan;
+                            break;
+                        case TouchpadMode.Pan:
+                            m_TouchpadMode = TouchpadMode.Rotate;
+                            break;
+
+                        default:
+                            throw new ArgumentOutOfRangeException();
                     }
+                    break;
+                case ButtonState.Hold:
+                    break;
+                case ButtonState.Release:
+
                     break;
 
                 default:
@@ -127,7 +179,12 @@ namespace BennyBrosephVR
             if (m_HeldObject == null)
                 return;
 
-            m_HeldObject.transform.Rotate(new Vector3(delta.y, delta.x));
+            if (m_TouchpadMode == TouchpadMode.Rotate)
+                m_HeldObject.GetComponent<IGrabbable>().
+                    Rotate(new Vector3(delta.y, delta.x, 0f) * m_RotationCoefficient);
+            if (m_TouchpadMode == TouchpadMode.Pan)
+                m_HeldObject.GetComponent<IGrabbable>().
+                    Pan(new Vector3(0f, delta.x, delta.y) * m_TranslationCoefficient);
         }
 
         [CanBeNull]
